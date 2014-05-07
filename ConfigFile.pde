@@ -44,6 +44,74 @@ void readConfigFile(String config_file){
           USING_OMICRON_LEGACY = false;
         continue;
       }
+      
+      if( rawConfig[i].contains("CLUSTER_ENABLED") && rawConfig[i].contains("true") ){
+        clusterEnabled = true;
+        println("Config: Cluster mode enabled");
+        continue;
+      }
+      
+      if( clusterEnabled && rawConfig[i].contains("MASTER_NODE_IP") )
+      {
+        try
+        {
+          String myIP = InetAddress.getLocalHost().getHostAddress();
+          String nodeIPStr = rawConfig[i].substring( rawConfig[i].indexOf("\"")+1, rawConfig[i].lastIndexOf("\"") );
+          masterNodeIP = nodeIPStr;
+          if( myIP.contains(nodeIPStr) )
+          {
+            isMaster = true;
+            println("Config: IP '"+myIP+"' set as master node");
+          }
+        }
+        catch( UnknownHostException e )
+        {
+          println(e);
+        }
+      }
+      
+      if( rawConfig[i].contains("MASTER_NODE_PORT") )
+      {
+        tempStr = rawConfig[i].substring( rawConfig[i].indexOf("=")+1, rawConfig[i].lastIndexOf(";") );
+        masterNodePort = Integer.valueOf( tempStr.trim() );
+      }
+      if( clusterEnabled && rawConfig[i].contains("NODE") && !rawConfig[i].contains("MASTER") ){
+        // Parse string
+        String nodeIDStr = rawConfig[i].substring( rawConfig[i].indexOf(" ")+1, rawConfig[i].indexOf("=") );
+        String nodeIPStr = rawConfig[i].substring( rawConfig[i].indexOf("\"")+1, rawConfig[i].lastIndexOf("\"") );
+        
+        String nodeXOffsetStr = rawConfig[i].substring( rawConfig[i].lastIndexOf("=")+1, rawConfig[i].indexOf(",") );
+        String nodeYOffsetStr = rawConfig[i].substring( rawConfig[i].lastIndexOf(",")+1, rawConfig[i].length() );
+
+        // Remove leading/trailing whitespace
+        nodeIDStr = nodeIDStr.trim();
+        nodeIPStr = nodeIPStr.trim();
+
+        try
+        {
+          String myIP = InetAddress.getLocalHost().getHostAddress();
+          //println("Config: My IP '"+myIP+"'");
+          if( myIP.contains(nodeIPStr) )
+          {
+            int xOffset = Integer.valueOf( nodeXOffsetStr.trim() );
+            int yOffset = Integer.valueOf( nodeYOffsetStr.trim() );
+            println("Config: Configuring '"+nodeIPStr+"' as node '"+nodeIDStr+"'");
+            clusterSetByConfig = true;
+            cluster_xOffset = xOffset;
+            cluster_yOffset = yOffset;
+          }
+          //nodeIDLookup.put( nodeIPStr, nodeIDStr+","+nodeXOffsetStr+","+nodeYOffsetStr);
+          //println("Config: Node ID '"+nodeIDStr+"' IP '"+nodeIPStr+"'");
+          //continue;
+        }
+        catch( UnknownHostException e )
+        {
+          println(e);
+        }
+        continue;
+      }
+
+      /*
       if( rawConfig[i].contains("MASTER_NODE_IP") ){
         masterNodeIP = rawConfig[i].substring( rawConfig[i].indexOf("\"")+1, rawConfig[i].lastIndexOf("\"") );
         cluster = true;
@@ -65,6 +133,7 @@ void readConfigFile(String config_file){
         nNodes = Integer.valueOf( tempStr.trim() );
         continue;
       }
+      */
       if( rawConfig[i].contains("IPAD_PORT") ){
         tempStr = rawConfig[i].substring( rawConfig[i].indexOf("=")+1, rawConfig[i].lastIndexOf(";") );
         iPadPort = Integer.valueOf( tempStr.trim() );

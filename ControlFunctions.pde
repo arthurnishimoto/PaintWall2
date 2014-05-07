@@ -31,6 +31,8 @@ void keyPressed() {
   }
   else if(key == 's' || key == 'S') {
     saveImage();
+    if( clusterEnabled && isMaster )
+      clusterServer.sendTCPString("SAVE_IMAGE");
   }
   else if(key == 'm' || key == 'M') {
     if(TOUCH_MODE == SPHERE ) {

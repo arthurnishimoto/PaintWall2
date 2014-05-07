@@ -1,9 +1,7 @@
 /**************************************************
  * Imports
  */
-import java.lang.*;
-import java.net.*;
-import java.io.*;
+
 
 //Variables:
 boolean connectToiPad = false;
@@ -24,6 +22,10 @@ void readData()
         //Data read in from touch server
         dataFromClient = inFromClient.readLine();
         if(dataFromClient != null) {
+          
+          if( clusterEnabled && isMaster )
+            clusterServer.sendTCPString( dataFromClient );
+            
           //println(dataFromClient);
           if(dataFromClient.equals("999 999 999 999 999")) {
             paintColors[0] = 0;
@@ -70,10 +72,12 @@ void readData()
     }
   }
   else {
-    if( cluster ){
-      //connectToMasterNode();
-    } else {
+    if( clusterEnabled && isMaster ){
       connectClient();
+    }
+    else
+    {
+      //connectToMasterNode();
     }
   }
 }
@@ -86,6 +90,8 @@ void connectClient() {
     mySocket = myServer.accept();
     System.out.println( " IPAD CLIENT"+" "+ mySocket.getInetAddress() +":"+mySocket.getPort()+" IS CONNECTED ");
     connectionEstablished = true;
+    if( clusterEnabled && isMaster )
+      clusterServer.sendTCPString("IPAD_CONNECTED");
   }
   catch(Exception e) {
     println("Server connection had an error!!!:" + e);

@@ -2,6 +2,10 @@ import omicronAPI.*;
 
 import processing.net.*;
 
+import java.lang.*;
+import java.net.*;
+import java.io.*;
+
 /**
  * ---------------------------------------------
  * PaintWall_2_0.pde
@@ -49,12 +53,19 @@ private float frameSetDelay = 3; // Delay in seconds before java frame is set
 private boolean javaFrameSet = false;
 
 // Clustering
-boolean cluster = false; // If false, this application will act as the iPad server.
-                        // If true, this application will attempt to connect to the master node.
+ClusterClient clusterClient;
+EventServer clusterServer;
+boolean clusterEnabled = false; // If false, this application will act as the iPad server.
+boolean isMaster = false;
+boolean clusterSetByConfig = false;
+int cluster_xOffset = 0;
+int cluster_yOffset = 0;
+
 int nNodes = 1;
 int thisNodeID = 1;
 String masterNodeIP = "127.0.0.1";
 int masterNodePort = 7171;
+int masterUDPPort = 8101;
 
 // Thread safe flags for toggling Processing functions
 boolean setClearScreen = false;
@@ -80,10 +91,27 @@ public void init() {
 
    font = loadFont("ArialMT-36.vlw");
    
+   if( clusterEnabled )
+   {
+     clusterClient = new ClusterClient();
+    
+     if( clusterSetByConfig )
+       clusterClient.setOffset(cluster_xOffset, cluster_yOffset);
+     if( !isMaster )
+       clusterClient.connectToMaster(masterNodeIP, masterNodePort);
+     else
+     {
+       clusterServer = new EventServer(masterNodePort, masterUDPPort);
+       clusterServer.listenForClients();
+       println("Master Node Cluster Server started on '" + masterNodeIP + "' on port " + masterNodePort);
+     }
+   }
+  
    startTouchConnection();
   
   // iPad Thread
-  if(connectToiPad && !cluster) {
+  if( connectToiPad && isMaster ) {
+    
     Runnable loader = new Runnable() {
       public void run() {
         readData();
@@ -93,8 +121,11 @@ public void init() {
     waitingThread.start();
   }
   
-  if( cluster ){
-    connectToiPad = false;
+  if( clusterEnabled ){
+    
+    //if( !isMaster )
+    //  connectToiPad = false;
+    /*
     Runnable loader = new Runnable() {
       public void run() {
         connectToMasterNode();
@@ -102,19 +133,17 @@ public void init() {
     };
     masterNodeThread = new Thread( loader );
     masterNodeThread.start();
+    */
   }
-  
+  noCursor();
  }// setup
  
  void draw(){
+   if( clusterEnabled )
+    clusterClient.pushOffset();
+    
    gameTimer = ( millis() - startTime ) / 1000.0;
-   
-   // Sets the window location
-  if( setJavaFrameEnabled && gameTimer > frameSetDelay && !javaFrameSet ){
-    frame.setLocation( X_OFFSET, Y_OFFSET );
-    javaFrameSet = false;
-  }
-  
+ 
      if(connectToiPad) {
         if( !connectionEstablished && showWaiting ) {
           frameRate(16);
@@ -130,7 +159,7 @@ public void init() {
           background(backgroundColor);
           showWaiting = false;
         } 
-        else {
+        else if( clusterEnabled && isMaster ){
           readData();
         }
      }
@@ -141,6 +170,13 @@ public void init() {
      
      drawStuff();
      omicronManager.process();
+     
+    if( clusterEnabled )
+    {
+      if( !isMaster )
+        clusterClient.listenForData();
+      clusterClient.popOffset();
+    }
  }
  
  
